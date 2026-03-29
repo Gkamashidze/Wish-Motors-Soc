@@ -116,21 +116,29 @@ def generate_text(post_type):
     text = re.sub(r'#+\s?', '', text)
     return text.strip()
 
-def generate_ai_image(post_type):
+def generate_ai_image(post_type, text):
     client = google_genai.Client(api_key=GEMINI_API_KEY)
+    short = text[:300] if len(text) > 300 else text
     if post_type == "maintenance":
-        prompt = """3D animated Pixar/Disney style illustration for an automotive advertisement. 
-        A friendly cartoon mechanic in navy blue uniform holding SsangYong car parts. 
-        SsangYong SUV cars (Rexton, Musso) in background of a modern clean service center. 
-        Engine oil bottles, filters and spare parts visible. 
-        Color scheme: dark navy blue and cyan blue. Professional, cheerful atmosphere. 
-        Photorealistic 3D render, high quality, commercial advertisement style. No text."""
+        prompt = f"""Create a professional square 1080x1080 advertisement poster in Pixar/Disney 3D animation style.
+Scene: Bright modern automotive service center, clean white and blue interior.
+Main character: Friendly 3D cartoon mechanic in navy blue SsangYong uniform, smiling.
+Background: Two SsangYong SUVs (Rexton and Korando), oil bottles, spare parts on shelves.
+Text overlay at top of image - orange bordered info boxes with this content:
+"Wish Motors - SsangYong სპეციალიზებული ცენტრი"
+"{short[:150]}"
+Colors: Navy blue #1B2D5B and cyan #29ABE2 accents. Bright, colorful, high quality 3D render.
+No dark overlays. Professional commercial advertisement look."""
     else:
-        prompt = """3D animated Pixar/Disney style illustration for an automotive electrical diagnostics advertisement.
-        A friendly cartoon mechanic in navy blue uniform holding a modern car diagnostic tablet/scanner.
-        SsangYong SUV in background connected to diagnostic equipment, glowing ECU circuits visible.
-        Modern clean automotive service center. Color scheme: dark navy blue and cyan blue with electric glow effects.
-        Photorealistic 3D render, high quality, commercial advertisement style. No text."""
+        prompt = f"""Create a professional square 1080x1080 advertisement poster in Pixar/Disney 3D animation style.
+Scene: Bright modern automotive diagnostics center with glowing equipment.
+Main character: Friendly 3D cartoon mechanic in navy blue uniform holding diagnostic tablet with glowing screen.
+Background: SsangYong SUV connected to diagnostic computer, ECU circuit visualization, electric blue glow.
+Text overlay at top of image - orange bordered info boxes with this content:
+"Wish Motors - SsangYong ელ. დიაგნოსტიკა"
+"{short[:150]}"
+Colors: Navy blue #1B2D5B and cyan #29ABE2 with electric glow effects. Bright, colorful, high quality 3D render.
+No dark overlays. Professional commercial advertisement look."""
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash-image',
@@ -149,51 +157,21 @@ def generate_ai_image(post_type):
         
 def create_poster(post_type, text, ai_image_bytes=None):
     W, H = 1080, 1080
-
     if ai_image_bytes:
         try:
-            img = Image.open(io.BytesIO(ai_image_bytes)).resize((W, H)).convert('RGBA')
+            img = Image.open(io.BytesIO(ai_image_bytes)).resize((W, H)).convert('RGB')
+            buf = io.BytesIO()
+            img.save(buf, format='PNG')
+            return buf.getvalue()
         except Exception:
-            img = Image.new('RGBA', (W, H), NAVY + (255,))
-    else:
-        img = Image.new('RGBA', (W, H), NAVY + (255,))
-
-    # Header
-    header = Image.new('RGBA', (W, 150), NAVY + (240,))
-    img.paste(header, (0, 0), header)
-
-    # Footer
-    footer = Image.new('RGBA', (W, 130), NAVY + (240,))
-    img.paste(footer, (0, H - 130), footer)
-
-    img = img.convert('RGB')
+            pass
+    # Fallback
+    img = Image.new('RGB', (W, H), NAVY)
     draw = ImageDraw.Draw(img)
-
-    # Cyan accent lines
-    draw.rectangle([0, 150, W, 167], fill=CYAN)
-    draw.rectangle([0, H - 147, W, H - 130], fill=CYAN)
-
-    f_title   = load_font(58, bold=True)
-    f_subtitle= load_font(26)
-    f_badge   = load_font(30, bold=True)
-    f_footer  = load_font(27)
-    f_footer2 = load_font(24)
-
-    # Header: WISH MOTORS
-    draw.text((40, 25), "WISH MOTORS", font=f_title, fill=WHITE)
-    draw.text((42, 105), "SsangYong Parts & Accessories", font=f_subtitle, fill=CYAN)
-
-    # Badge (post type)
-    badge = "🔧 SsangYong-ის მოვლა" if post_type == "maintenance" else "⚡ ელექტრო დიაგნოსტიკა"
-    bx, by = 40, 178
-    bb = draw.textbbox((bx, by), badge, font=f_badge)
-    draw.rectangle([bx - 12, by - 10, bb[2] + 12, bb[3] + 10], fill=CYAN)
-    draw.text((bx, by), badge, font=f_badge, fill=WHITE)
-
-    # Footer
-    draw.text((40, H - 118), "📞 Wish Motors | SsangYong Parts", font=f_footer,  fill=WHITE)
-    draw.text((40, H - 78),  "ორიგინალი და შემცვლელი ნაწილები",  font=f_footer2, fill=CYAN)
-
+    draw.rectangle([0, 0, W, 10], fill=CYAN)
+    draw.rectangle([0, H-10, W, H], fill=CYAN)
+    f = load_font(60, bold=True)
+    draw.text((40, 40), "WISH MOTORS", font=f, fill=WHITE)
     buf = io.BytesIO()
     img.save(buf, format='PNG')
     return buf.getvalue()
@@ -237,7 +215,7 @@ async def generate_and_send(app):
     try:
         await app.bot.send_message(TELEGRAM_CHAT_ID, "🔄 პოსტს ვქმნი, მოიცა...")
         text     = generate_text(post_type)
-        ai_image = generate_ai_image(post_type)
+        ai_image = generate_ai_image(post_type, text)
         image    = create_poster(post_type, text, ai_image)
         pending  = {'type': post_type, 'text': text, 'image': image}
         await send_for_approval(app, post_type, text, image)
