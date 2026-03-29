@@ -30,6 +30,7 @@ NAVY  = (27,  45,  91)
 CYAN  = (41, 171, 226)
 WHITE = (255, 255, 255)
 STATE_FILE = "state.json"
+IMAGE_SYSTEM_PROMPT
 
 SYSTEM_PROMPT = """შენი როლი და კონტექსტი:
 შენ ხარ "Wish Motors"-ის მთავარი მარკეტინგული სტრატეგი და კრეატიული დირექტორი. Wish Motors არის ავტონაწილების და სერვისის სპეციალიზებული ცენტრი ქალაქ ბათუმში (მისამართი: თევდორე მღვდლის #6), რომელიც მკაცრად ორიენტირებულია SsangYong-ის მოდელებზე (Rexton, Korando, Actyon, Tivoli, Turismo, Torres). მე ვარ ბიზნესის მფლობელი, მაღალი კლასის ავტო-ელექტრიკოსი და დიაგნოსტიკოსი.
@@ -137,34 +138,41 @@ def generate_text(post_type):
     text = re.sub(r'#+\s?', '', text)
     return text.strip()
 
+IMAGE_SYSTEM_PROMPT = """შენ უნდა შექმნა მაღალი ხარისხის 3D ანიმაციური პოსტერი (Pixar-ის/Disney-ს სტილში), რომელიც ზუსტად შეესაბამება მოცემული სარეკლამო პოსტის შინაარსს.
+
+ვიზუალური წესები:
+სტილი: 3D ანიმაცია, Expressive character design, Detailed textures.
+ფერთა გამა: მუქი ლურჯი (Navy Blue) და ცისფერი (Cyan) — დომინანტი ფერები.
+ლოკაცია: Wish Motors-ის სერვის ცენტრი ბათუმში. კედელზე ჩანდეს: "WISH MOTORS" და "ბათუმი, თევდორე მღვდლის #6".
+
+პერსონაჟი: პროფესიონალი, სანდო, მეგობრული ხელოსანი. ეცვას Wish Motors-ის მუქ ლურჯ კომბინეზონი "WM" ლოგოთი. პოზა და ქმედება ასახავდეს პოსტის თემას.
+
+SsangYong მოდელები: პოსტერზე გამოხატე კონკრეტული მოდელები თემის მიხედვით (Rexton, Torres, Korando, Tivoli, Turismo, Actyon).
+
+თუ დიაგნოსტიკაა: ხელოსანს ხელში Autel სკანერი (ლოგო მკაფიოდ!), მიერთებული მანქანასთან. Xhorse — არასდროს!
+თუ მოვლა/სითხეებია: OEM ნაწილები, ზეთის ბოთლები (5W-30, MB 229.51), ტექნიკური მონაცემები (6.0L, 8.5L).
+
+ატმოსფერო: პროფესიონალური, ენერგიული, სუფთა. განათება თბილი, Pixar-სტილი."""
+
 def generate_ai_image(post_type, text):
     client = google_genai.Client(api_key=GEMINI_API_KEY)
-    short = text[:300] if len(text) > 300 else text
-    if post_type == "maintenance":
-        prompt = f"""Create a professional square 1080x1080 advertisement poster in Pixar/Disney 3D animation style.
-Scene: Bright modern automotive service center, clean white and blue interior.
-Main character: Friendly 3D cartoon mechanic in navy blue SsangYong uniform, smiling.
-Background: Two SsangYong SUVs (Rexton and Korando), oil bottles, spare parts on shelves.
-Text overlay at top of image - orange bordered info boxes with this content:
-"Wish Motors - SsangYong სპეციალიზებული ცენტრი"
-"{short[:150]}"
-Colors: Navy blue #1B2D5B and cyan #29ABE2 accents. Bright, colorful, high quality 3D render.
-No dark overlays. Professional commercial advertisement look."""
-    else:
-        prompt = f"""Create a professional square 1080x1080 advertisement poster in Pixar/Disney 3D animation style.
-Scene: Bright modern automotive diagnostics center with glowing equipment.
-Main character: Friendly 3D cartoon mechanic in navy blue uniform holding diagnostic tablet with glowing screen.
-Background: SsangYong SUV connected to diagnostic computer, ECU circuit visualization, electric blue glow.
-Text overlay at top of image - orange bordered info boxes with this content:
-"Wish Motors - SsangYong ელ. დიაგნოსტიკა"
-"{short[:150]}"
-Colors: Navy blue #1B2D5B and cyan #29ABE2 with electric glow effects. Bright, colorful, high quality 3D render.
-No dark overlays. Professional commercial advertisement look."""
+    short = text[:400] if len(text) > 400 else text
+
+    user_prompt = f"""შექმენი პოსტერი შემდეგი სარეკლამო პოსტის მიხედვით:
+
+პოსტის ტიპი: {"მოვლა / ნაწილები / სითხეები" if post_type == "maintenance" else "ელექტრო დიაგნოსტიკა"}
+
+პოსტის შინაარსი:
+{short}
+
+პოსტერი 1080x1080 პიქსელი, კვადრატული ფორმატი."""
+
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash-image',
-            contents=prompt,
+            contents=user_prompt,
             config=genai_types.GenerateContentConfig(
+                system_instruction=IMAGE_SYSTEM_PROMPT,
                 response_modalities=['image']
             )
         )
