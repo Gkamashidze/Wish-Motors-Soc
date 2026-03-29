@@ -66,7 +66,7 @@ def wrap_text(draw, text, font, max_w):
 
 def generate_text(post_type):
     genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-2.0-flash')
     if post_type == "maintenance":
         prompt = """დაწერე საინტერესო Facebook პოსტი ქართულ ენაზე SsangYong-ის მანქანების მოვლის შესახებ.
 პოსტი უნდა:
