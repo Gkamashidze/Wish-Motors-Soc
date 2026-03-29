@@ -131,50 +131,52 @@ def generate_ai_image(post_type):
         
 def create_poster(post_type, text, ai_image_bytes=None):
     W, H = 1080, 1080
+
     if ai_image_bytes:
         try:
             img = Image.open(io.BytesIO(ai_image_bytes)).resize((W, H)).convert('RGBA')
-            overlay = Image.new('RGBA', (W, H), (27, 45, 91, 160))
-            img = Image.alpha_composite(img, overlay).convert('RGB')
         except Exception:
-            img = Image.new('RGB', (W, H), WHITE)
+            img = Image.new('RGBA', (W, H), NAVY + (255,))
     else:
-        img = Image.new('RGB', (W, H), WHITE)
+        img = Image.new('RGBA', (W, H), NAVY + (255,))
 
+    # Header bar
+    header = Image.new('RGBA', (W, 140), NAVY + (235,))
+    img.paste(header, (0, 0), header)
+
+    # Footer bar
+    footer = Image.new('RGBA', (W, 120), NAVY + (235,))
+    img.paste(footer, (0, H - 120), footer)
+
+    img = img.convert('RGB')
     draw = ImageDraw.Draw(img)
-    draw.rectangle([0, 0, W, 130], fill=NAVY)
-    draw.rectangle([0, 130, W, 148], fill=CYAN)
-    draw.rectangle([0, H-110, W, H], fill=NAVY)
-    draw.rectangle([0, H-126, W, H-110], fill=CYAN)
+
+    # Cyan accent lines
+    draw.rectangle([0, 140, W, 156], fill=CYAN)
+    draw.rectangle([0, H - 136, W, H - 120], fill=CYAN)
 
     f_title  = load_font(54, bold=True)
     f_badge  = load_font(28, bold=True)
-    f_body   = load_font(30)
     f_footer = load_font(25)
 
+    # Header
     draw.text((40, 30), "WISH MOTORS", font=f_title, fill=WHITE)
 
+    # Badge
     badge = "🔧 SsangYong-ის მოვლა" if post_type == "maintenance" else "⚡ ელექტრო დიაგნოსტიკა"
     bx, by = 40, 168
     bb = draw.textbbox((bx, by), badge, font=f_badge)
-    draw.rectangle([bx-10, by-8, bb[2]+10, bb[3]+8], fill=CYAN)
+    draw.rectangle([bx - 10, by - 8, bb[2] + 10, bb[3] + 8], fill=CYAN)
     draw.text((bx, by), badge, font=f_badge, fill=WHITE)
 
-    short = text[:400] + "..." if len(text) > 400 else text
-    lines = wrap_text(draw, short, f_body, W - 80)
-    text_color = WHITE if ai_image_bytes else NAVY
-    y = 250
-    for line in lines[:14]:
-        draw.text((40, y), line, font=f_body, fill=text_color)
-        y += 44
-
-    draw.text((40, H-95), "📞 Wish Motors | SsangYong Parts", font=f_footer, fill=WHITE)
-    draw.text((40, H-60), "ორიგინალი და შემცვლელი ნაწილები",  font=f_footer, fill=CYAN)
+    # Footer
+    draw.text((40, H - 105), "📞 Wish Motors | SsangYong Parts", font=f_footer, fill=WHITE)
+    draw.text((40, H - 68),  "ორიგინალი და შემცვლელი ნაწილები",  font=f_footer, fill=CYAN)
 
     buf = io.BytesIO()
     img.save(buf, format='PNG')
     return buf.getvalue()
-
+    
 pending = {}
 
 async def send_for_approval(app, post_type, text, image):
