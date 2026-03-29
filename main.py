@@ -3,7 +3,7 @@ import io
 import json
 import logging
 import requests
-import google.generativeai as genai
+from google import genai as google_genai
 from PIL import Image, ImageDraw, ImageFont
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
@@ -65,8 +65,7 @@ def wrap_text(draw, text, font, max_w):
     return lines
 
 def generate_text(post_type):
-    genai.configure(api_key=GEMINI_API_KEY)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    client = google_genai.Client(api_key=GEMINI_API_KEY)
     if post_type == "maintenance":
         prompt = """დაწერე საინტერესო Facebook პოსტი ქართულ ენაზე SsangYong-ის მანქანების მოვლის შესახებ.
 პოსტი უნდა:
@@ -88,7 +87,11 @@ def generate_text(post_type):
 - შეიცავდეს 3-4 emoji
 - იყოს მეგობრული და პროფესიონალური
 - არ შეიცავდეს ჰეშთეგებს"""
-    return model.generate_content(prompt).text.strip()
+    response = client.models.generate_content(
+        model='gemini-1.5-flash',
+        contents=prompt
+    )
+    return response.text.strip()
 
 def create_poster(post_type, text):
     W, H = 1080, 1080
