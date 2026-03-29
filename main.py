@@ -65,7 +65,10 @@ def wrap_text(draw, text, font, max_w):
     return lines
 
 def generate_text(post_type):
-    client = google_genai.Client(api_key=GEMINI_API_KEY)
+    client = google_genai.Client(
+    api_key=GEMINI_API_KEY,
+    http_options={'api_version': 'v1'}
+)
     if post_type == "maintenance":
         prompt = """დაწერე საინტერესო Facebook პოსტი ქართულ ენაზე SsangYong-ის მანქანების მოვლის შესახებ.
 პოსტი უნდა:
