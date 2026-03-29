@@ -31,41 +31,49 @@ CYAN  = (41, 171, 226)
 WHITE = (255, 255, 255)
 STATE_FILE = "state.json"
 
-SYSTEM_PROMPT = """შენი როლი და კონტექსტი:
-შენ ხარ "Wish Motors"-ის მთავარი მარკეტინგული სტრატეგი და კრეატიული დირექტორი. Wish Motors არის ავტონაწილების და სერვისის სპეციალიზებული ცენტრი ქალაქ ბათუმში (მისამართი: თევდორე მღვდლის #6), რომელიც მკაცრად ორიენტირებულია SsangYong-ის მოდელებზე (Rexton, Korando, Actyon, Tivoli, Turismo, Torres). მე ვარ ბიზნესის მფლობელი, მაღალი კლასის ავტო-ელექტრიკოსი და დიაგნოსტიკოსი.
+MASTER_PROMPT = """You are the fully automated Chief Marketing Strategist and Creative Director for "Wish Motors", a specialized auto parts and service center in Batumi, Georgia (Address: 6 Tevdore Mgvdli Str.). 
+The business exclusively services and sells parts for SsangYong/KGM models (Rexton, Korando, Actyon, Tivoli, Turismo, Torres). 
+The owner is a high-level automotive electrician and diagnostic specialist.
 
-ბიზნესის პრინციპები და დეტალები:
-აპარატურა: ვმუშაობ პროფესიონალური აპარატურით — ვიყენებ მხოლოდ Autel-ის სკანერებს და ინსტრუმენტებს (Xhorse არ გამოიყენება!).
-პროდუქცია: ვყიდით როგორც ორიგინალ (OEM), ასევე მაღალხარისხიან ალტერნატიულ ნაწილებს. მომხმარებელთან ვართ აბსოლუტურად გამჭვირვალეები.
-ლოგისტიკა: გვაქვს უფასო მიტანა ბათუმში. 150 ლარზე ზევით ან 5 ნაწილის შეძენისას — უფასო გზავნა მთელ საქართველოში.
-საკონტაქტო ინფო: ტელ: 555 966 428, WhatsApp: +995 555 966 428. FB ჯგუფი: https://shorturl.at/wxMWE
+CRITICAL BUSINESS RULES:
+1. Equipment: Only "Autel" diagnostic scanners and tools are used. NEVER mention or generate "Xhorse" equipment.
+2. Parts: Selling OEM and high-quality aftermarket parts with absolute transparency.
+3. Logistics: Free delivery within Batumi. Free nationwide shipping (Georgia) for orders over 150 GEL or 5+ items.
+4. Contact Info (MUST be in every ad): Tel: 555 966 428 | WhatsApp: +995 555 966 428 | FB Group: https://shorturl.at/wxMWE
 
-წესები პოსტის ტექსტისთვის:
-- ყოველთვის დაურთე მიმზიდველი სათაური
-- არ მომმართო ტექსტში პირადად და ამოიღე ზედმეტი სიტყვები (მაგ: არ გამოიყენო მომართვა "ექსპერტო")
-- არასდროს მისცე მომხმარებელს რჩევა, რომ მიმართოს სხვა პროფესიონალს
-- გამოიყენე შესაბამისი და ზომიერი რაოდენობის emoji
-- არ გამოიყენო markdown ფორმატირება (*, **, #)
-- არ გამოიყენო ჰეშთეგები
+YOUR TASK:
+I will provide you with a [TARGET_CATEGORY]. 
+Step 1: Autonomously select a highly specific, useful topic within that category tailored to SsangYong vehicles.
+Step 2: Generate exactly two output blocks without ANY conversational filler, greetings, or explanations. Just the blocks.
 
-მნიშვნელოვანი სისტემური წესები:
-ტექნიკური სიზუსტე: სითხეებზე, ნაწილებსა და მოვლაზე პოსტის წერისას, ინფორმაცია უნდა ეფუძნებოდეს მხოლოდ SsangYong/KGM-ის ოფიციალურ (OEM) რეკომენდაციებს. აუცილებლად ჩაშალე მონაცემები კონკრეტული მოდელებისა და ძრავების მიხედვით და მიუთითე ზუსტი დეტალები: ლიტრაჟი, სიბლანტე და დაშვება. მოერიდე ზოგად საუბარს."""
+[TARGET_CATEGORY] = {current_category}
 
-IMAGE_SYSTEM_PROMPT = """შენ უნდა შექმნა მაღალი ხარისხის 3D ანიმაციური პოსტერი (Pixar-ის/Disney-ს სტილში), რომელიც ზუსტად შეესაბამება მოცემული სარეკლამო პოსტის შინაარსს.
+--- CATEGORY LOGIC FOR TOPIC SELECTION ---
+If TARGET_CATEGORY is "AUTO-ELECTRICAL/DIAGNOSTICS":
+Select a topic like DPF forced regeneration via scanner, sensor diagnostics, ECU programming, ABS/ESP troubleshooting, or resolving Check Engine issues. Focus on the precision of the "Autel" scanner and the owner's expert skills.
 
-ვიზუალური წესები:
-სტილი: 3D ანიმაცია, Expressive character design, Detailed textures.
-ფერთა გამა: მუქი ლურჯი (Navy Blue) და ცისფერი (Cyan) — დომინანტი ფერები.
-ლოკაცია: Wish Motors-ის სერვის ცენტრი ბათუმში. კედელზე ჩანდეს: "WISH MOTORS" და "ბათუმი, თევდორე მღვდლის #6".
+If TARGET_CATEGORY is "MAINTENANCE/PARTS/FLUIDS":
+Select a topic like Automatic Transmission Fluid (ATF), Antifreeze/Coolant, Brake Pads, or Filters. 
+CRITICAL RULE: You MUST provide exact technical specifications (OEM recommendations) broken down by SsangYong models (e.g., Korando Sports 2.0/2.2, Rexton G4, Tivoli, Torres). Include capacities (Liters), exact fluid specs (e.g., DOT4, ATF 3292/DSIH 6P805, etc.), and maintenance intervals. Do not give generic advice.
 
-პერსონაჟი: პროფესიონალი, სანდო, მეგობრული ხელოსანი. ეცვას Wish Motors-ის მუქ ლურჯ კომბინეზონი "WM" ლოგოთი. პოზა და ქმედება ასახავდეს პოსტის თემას.
+--- OUTPUT FORMAT ---
 
-SsangYong მოდელები: პოსტერზე გამოხატე კონკრეტული მოდელები თემის მიხედვით (Rexton, Torres, Korando, Tivoli, Turismo, Actyon).
+[IMAGE_PROMPT]
+Write a highly detailed prompt for a Text-to-Image AI in English based on the specific topic you chose.
+- Style: High-quality 3D animation (Pixar/Disney style), cinematic lighting.
+- Colors: Brand colors must dominate (Navy Blue and Cyan).
+- Scene: Inside the modern Wish Motors service center in Batumi. Wall text must say "WISH MOTORS" and "ბათუმი, თევდორე მღვდლის #6".
+- Character: Include a friendly, expert mechanic wearing a Navy Blue uniform with the "WISH MOTORS" logo.
+- Details: Include relevant SsangYong models. Display relevant holographic tech data floating in the air based on the topic.
+[/IMAGE_PROMPT]
 
-თუ დიაგნოსტიკაა: ხელოსანს ხელში Autel სკანერი (ლოგო მკაფიოდ!), მიერთებული მანქანასთან. Xhorse — არასდროს!
-თუ მოვლა/სითხეებია: OEM ნაწილები, ზეთის ბოთლები (5W-30, MB 229.51), ტექნიკური მონაცემები (6.0L, 8.5L).
-
-ატმოსფერო: პროფესიონალური, ენერგიული, სუფთა. განათება თბილი, Pixar-სტილი."""
+[ADCOPY]
+Write the social media post based on the topic you chose.
+- Language: Georgian ONLY.
+- Tone: Professional, highly informative, trustworthy. Do NOT use overly familiar greetings. Go straight to the point.
+- Structure: Catchy title with emojis -> Brief explanation -> Detailed SsangYong specific data -> Wish Motors business rules -> Contact Info.
+- Format strictly with bullet points and appropriate emojis.
+[/ADCOPY]"""
 
 def ensure_fonts():
     if not os.path.exists(FONT_BOLD):
@@ -131,27 +139,27 @@ def wrap_text(draw, text, font, max_w):
         lines.append(' '.join(cur))
     return lines
 
-def generate_text(post_type):
+def generate_content(post_type):
     client = google_genai.Client(api_key=GEMINI_API_KEY)
-    if post_type == "maintenance":
-        user_prompt = """დაწერე Facebook პოსტი SsangYong-ის მანქანების მოვლის შესახებ.
-თემა: სითხეები, ნაწილები ან ტექნიკური მოვლა — აირჩიე კონკრეტული და საინტერესო.
-პოსტი: 150-200 სიტყვა. დაიცავი ყველა სისტემური წესი."""
-    else:
-        user_prompt = """დაწერე Facebook პოსტი SsangYong მანქანების ელექტრული სისტემებისა და დიაგნოსტიკის შესახებ.
-თემა: ECU, ABS, სენსორები, ან სხვა ელ. სისტემა — აირჩიე კონკრეტული.
-პოსტი: 150-200 სიტყვა. დაიცავი ყველა სისტემური წესი."""
+    category = "AUTO-ELECTRICAL/DIAGNOSTICS" if post_type == "electrical" else "MAINTENANCE/PARTS/FLUIDS"
+    prompt = MASTER_PROMPT.replace("{current_category}", category)
 
     response = client.models.generate_content(
         model='gemini-2.5-flash',
-        contents=user_prompt,
-        config=genai_types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT
-        )
+        contents=prompt
     )
-    text = re.sub(r'\*+', '', response.text)
-    text = re.sub(r'#+\s?', '', text)
-    return text.strip()
+    raw = response.text
+
+    image_prompt = ""
+    adcopy = ""
+    if "[IMAGE_PROMPT]" in raw and "[/IMAGE_PROMPT]" in raw:
+        image_prompt = raw.split("[IMAGE_PROMPT]")[1].split("[/IMAGE_PROMPT]")[0].strip()
+    if "[ADCOPY]" in raw and "[/ADCOPY]" in raw:
+        adcopy = raw.split("[ADCOPY]")[1].split("[/ADCOPY]")[0].strip()
+
+    adcopy = re.sub(r'\*+', '', adcopy)
+    adcopy = re.sub(r'#+\s?', '', adcopy)
+    return image_prompt, adcopy.strip()
 
 IMAGE_SYSTEM_PROMPT = """შენ უნდა შექმნა მაღალი ხარისხის 3D ანიმაციური პოსტერი (Pixar-ის/Disney-ს სტილში), რომელიც ზუსტად შეესაბამება მოცემული სარეკლამო პოსტის შინაარსს.
 
@@ -169,25 +177,15 @@ SsangYong მოდელები: პოსტერზე გამოხა�
 
 ატმოსფერო: პროფესიონალური, ენერგიული, სუფთა. განათება თბილი, Pixar-სტილი."""
 
-def generate_ai_image(post_type, text):
+def generate_ai_image(image_prompt):
+    if not image_prompt:
+        return None
     client = google_genai.Client(api_key=GEMINI_API_KEY)
-    short = text[:400] if len(text) > 400 else text
-
-    user_prompt = f"""შექმენი პოსტერი შემდეგი სარეკლამო პოსტის მიხედვით:
-
-პოსტის ტიპი: {"მოვლა / ნაწილები / სითხეები" if post_type == "maintenance" else "ელექტრო დიაგნოსტიკა"}
-
-პოსტის შინაარსი:
-{short}
-
-პოსტერი 1080x1080 პიქსელი, კვადრატული ფორმატი."""
-
     try:
         response = client.models.generate_content(
             model='gemini-2.5-flash-image',
-            contents=user_prompt,
+            contents=image_prompt,
             config=genai_types.GenerateContentConfig(
-                system_instruction=IMAGE_SYSTEM_PROMPT,
                 response_modalities=['image']
             )
         )
@@ -259,8 +257,8 @@ async def generate_and_send(app):
     post_type = get_post_type()
     try:
         await app.bot.send_message(TELEGRAM_CHAT_ID, "🔄 პოსტს ვქმნი, მოიცა...")
-        text     = generate_text(post_type)
-        ai_image = generate_ai_image(post_type, text)
+        image_prompt, text = generate_content(post_type)
+        ai_image = generate_ai_image(image_prompt)
         image    = create_poster(post_type, text, ai_image)
         pending  = {'type': post_type, 'text': text, 'image': image}
         await send_for_approval(app, post_type, text, image)
