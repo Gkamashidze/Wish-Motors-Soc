@@ -10,6 +10,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import re
+from functools import wraps
 
 FONT_BOLD = "/tmp/geo_bold.ttf"
 FONT_REG  = "/tmp/geo_reg.ttf"
@@ -18,12 +19,14 @@ def ensure_fonts():
     if not os.path.exists(FONT_BOLD):
         try:
             r = requests.get("https://github.com/google/fonts/raw/main/ofl/notosansgeorgian/static/NotoSansGeorgian-Bold.ttf", timeout=15)
+            r.raise_for_status()
             with open(FONT_BOLD, 'wb') as f: f.write(r.content)
         except Exception as e:
             logger.warning(f"Bold font download failed: {e}")
     if not os.path.exists(FONT_REG):
         try:
             r = requests.get("https://github.com/google/fonts/raw/main/ofl/notosansgeorgian/static/NotoSansGeorgian-Regular.ttf", timeout=15)
+            r.raise_for_status()
             with open(FONT_REG, 'wb') as f: f.write(r.content)
         except Exception as e:
             logger.warning(f"Regular font download failed: {e}")
@@ -45,6 +48,7 @@ WHITE = (255, 255, 255)
 STATE_FILE = "state.json"
 
 def owner_only(func):
+    @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if update.effective_user.id != ALLOWED_USER_ID:
             await update.message.reply_text("⛔ წვდომა აკრძალულია")
@@ -65,7 +69,6 @@ def save_post_type(t):
         json.dump({"last_type": t}, f)
 
 def load_font(size, bold=False):
-    ensure_fonts()
     preferred = FONT_BOLD if bold else FONT_REG
     fallbacks = [
         preferred,
@@ -212,11 +215,13 @@ def post_to_facebook(text, image):
     if 'error' in r:
         raise Exception(r['error']['message'])
     if FB_GROUP_ID:
-        requests.post(
+        gr = requests.post(
             f"https://graph.facebook.com/v21.0/{FB_GROUP_ID}/photos",
             files={'source': ('poster.png', io.BytesIO(image), 'image/png')},
             data={'caption': text, 'access_token': FB_PAGE_ACCESS_TOKEN}
-        )
+        ).json()
+        if 'error' in gr:
+            logger.warning(f"ჯგუფში გაზიარება ვერ მოხერხდა: {gr['error']['message']}")
 
 async def generate_and_send(app):
     global pending
@@ -265,6 +270,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
 def main():
+    ensure_fonts()
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("generate", cmd_generate))
