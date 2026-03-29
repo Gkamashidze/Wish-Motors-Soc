@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+import re
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -75,7 +76,8 @@ def generate_text(post_type):
 - დასრულდეს Call-to-Action-ით
 - შეიცავდეს 3-4 emoji
 - იყოს მეგობრული და პროფესიონალური
-- არ შეიცავდეს ჰეშთეგებს"""
+- არ შეიცავდეს ჰეშთეგებს
+- არ გამოიყენო markdown ფორმატირება, არავითარი *, **, # სიმბოლო"""
     else:
         prompt = """დაწერე საინტერესო Facebook პოსტი ქართულ ენაზე SsangYong მანქანების ელექტრული სისტემებისა და დიაგნოსტიკის შესახებ.
 პოსტი უნდა:
@@ -86,13 +88,49 @@ def generate_text(post_type):
 - დასრულდეს Call-to-Action-ით
 - შეიცავდეს 3-4 emoji
 - იყოს მეგობრული და პროფესიონალური
-- არ შეიცავდეს ჰეშთეგებს"""
+- არ შეიცავდეს ჰეშთეგებს
+- არ გამოიყენო markdown ფორმატირება, არავითარი *, **, # სიმბოლო"""
     response = client.models.generate_content(
         model='gemini-2.5-flash',
         contents=prompt
     )
-    return response.text.strip()
+    text = re.sub(r'\*+', '', response.text)
+    text = re.sub(r'#+\s?', '', text)
+    return text.strip()
+3. generate_ai_image ფუნქცია — მთლიანად შეცვალე:
 
+
+def generate_ai_image(post_type):
+    client = google_genai.Client(api_key=GEMINI_API_KEY)
+    if post_type == "maintenance":
+        prompt = """3D animated Pixar/Disney style illustration for an automotive advertisement. 
+        A friendly cartoon mechanic in navy blue uniform holding SsangYong car parts. 
+        SsangYong SUV cars (Rexton, Musso) in background of a modern clean service center. 
+        Engine oil bottles, filters and spare parts visible. 
+        Color scheme: dark navy blue and cyan blue. Professional, cheerful atmosphere. 
+        Photorealistic 3D render, high quality, commercial advertisement style. No text."""
+    else:
+        prompt = """3D animated Pixar/Disney style illustration for an automotive electrical diagnostics advertisement.
+        A friendly cartoon mechanic in navy blue uniform holding a modern car diagnostic tablet/scanner.
+        SsangYong SUV in background connected to diagnostic equipment, glowing ECU circuits visible.
+        Modern clean automotive service center. Color scheme: dark navy blue and cyan blue with electric glow effects.
+        Photorealistic 3D render, high quality, commercial advertisement style. No text."""
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash-image',
+            contents=prompt,
+            config=genai_types.GenerateContentConfig(
+                response_modalities=['image']
+            )
+        )
+        for part in response.candidates[0].content.parts:
+            if hasattr(part, 'inline_data') and part.inline_data:
+                return part.inline_data.data
+        return None
+    except Exception as e:
+        logger.warning(f"AI სურათი ვერ შეიქმნა: {e}")
+        return None
+        
 def generate_ai_image(post_type):
     client = google_genai.Client(api_key=GEMINI_API_KEY)
     if post_type == "maintenance":
