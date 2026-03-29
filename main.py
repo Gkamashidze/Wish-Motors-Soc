@@ -4,6 +4,7 @@ import json
 import logging
 import requests
 from google import genai as google_genai
+from google.genai import types as genai_types
 from PIL import Image, ImageDraw, ImageFont
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
@@ -12,17 +13,16 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-GEMINI_API_KEY      = os.environ["GEMINI_API_KEY"]
-TELEGRAM_BOT_TOKEN  = os.environ["TELEGRAM_BOT_TOKEN"]
-TELEGRAM_CHAT_ID    = os.environ["TELEGRAM_CHAT_ID"]
-FB_PAGE_ACCESS_TOKEN= os.environ["FB_PAGE_ACCESS_TOKEN"]
-FB_PAGE_ID          = os.environ["FB_PAGE_ID"]
-FB_GROUP_ID         = os.environ.get("FB_GROUP_ID", "")
+GEMINI_API_KEY       = os.environ["GEMINI_API_KEY"]
+TELEGRAM_BOT_TOKEN   = os.environ["TELEGRAM_BOT_TOKEN"]
+TELEGRAM_CHAT_ID     = os.environ["TELEGRAM_CHAT_ID"]
+FB_PAGE_ACCESS_TOKEN = os.environ["FB_PAGE_ACCESS_TOKEN"]
+FB_PAGE_ID           = os.environ["FB_PAGE_ID"]
+FB_GROUP_ID          = os.environ.get("FB_GROUP_ID", "")
 
 NAVY  = (27,  45,  91)
 CYAN  = (41, 171, 226)
 WHITE = (255, 255, 255)
-
 STATE_FILE = "state.json"
 
 def get_post_type():
@@ -65,10 +65,7 @@ def wrap_text(draw, text, font, max_w):
     return lines
 
 def generate_text(post_type):
-    client = google_genai.Client(
-    api_key=GEMINI_API_KEY,
-    http_options={'api_version': 'v1'}
-)
+    client = google_genai.Client(api_key=GEMINI_API_KEY)
     if post_type == "maintenance":
         prompt = """დაწერე საინტერესო Facebook პოსტი ქართულ ენაზე SsangYong-ის მანქანების მოვლის შესახებ.
 პოსტი უნდა:
@@ -91,16 +88,45 @@ def generate_text(post_type):
 - იყოს მეგობრული და პროფესიონალური
 - არ შეიცავდეს ჰეშთეგებს"""
     response = client.models.generate_content(
-        model='gemini-1.5-flash',
+        model='gemini-2.0-flash',
         contents=prompt
     )
     return response.text.strip()
 
-def create_poster(post_type, text):
-    W, H = 1080, 1080
-    img = Image.new('RGB', (W, H), WHITE)
-    draw = ImageDraw.Draw(img)
+def generate_ai_image(post_type):
+    client = google_genai.Client(api_key=GEMINI_API_KEY)
+    if post_type == "maintenance":
+        prompt = """Professional automotive advertisement photo. SsangYong car parts and maintenance tools arranged professionally. Dark navy blue and cyan color scheme. Clean, modern look. No text."""
+    else:
+        prompt = """Professional automotive electrical diagnostics photo. Modern car diagnostic equipment, ECU components. Dark navy blue and cyan color scheme. Clean, technical look. No text."""
+    try:
+        response = client.models.generate_images(
+            model='imagen-3.0-generate-002',
+            prompt=prompt,
+            config=genai_types.GenerateImagesConfig(
+                number_of_images=1,
+                aspect_ratio='1:1',
+                output_mime_type='image/jpeg'
+            )
+        )
+        return response.generated_images[0].image.image_bytes
+    except Exception as e:
+        logger.warning(f"AI სურათი ვერ შეიქმნა: {e}")
+        return None
 
+def create_poster(post_type, text, ai_image_bytes=None):
+    W, H = 1080, 1080
+    if ai_image_bytes:
+        try:
+            img = Image.open(io.BytesIO(ai_image_bytes)).resize((W, H)).convert('RGBA')
+            overlay = Image.new('RGBA', (W, H), (27, 45, 91, 160))
+            img = Image.alpha_composite(img, overlay).convert('RGB')
+        except Exception:
+            img = Image.new('RGB', (W, H), WHITE)
+    else:
+        img = Image.new('RGB', (W, H), WHITE)
+
+    draw = ImageDraw.Draw(img)
     draw.rectangle([0, 0, W, 130], fill=NAVY)
     draw.rectangle([0, 130, W, 148], fill=CYAN)
     draw.rectangle([0, H-110, W, H], fill=NAVY)
@@ -108,7 +134,6 @@ def create_poster(post_type, text):
 
     f_title  = load_font(54, bold=True)
     f_badge  = load_font(28, bold=True)
-    f_sub    = load_font(24)
     f_body   = load_font(30)
     f_footer = load_font(25)
 
@@ -122,12 +147,13 @@ def create_poster(post_type, text):
 
     short = text[:400] + "..." if len(text) > 400 else text
     lines = wrap_text(draw, short, f_body, W - 80)
+    text_color = WHITE if ai_image_bytes else NAVY
     y = 250
     for line in lines[:14]:
-        draw.text((40, y), line, font=f_body, fill=NAVY)
+        draw.text((40, y), line, font=f_body, fill=text_color)
         y += 44
 
-    draw.text((40, H-95),  "📞 Wish Motors | SsangYong Parts", font=f_footer, fill=WHITE)
+    draw.text((40, H-95), "📞 Wish Motors | SsangYong Parts", font=f_footer, fill=WHITE)
     draw.text((40, H-60), "ორიგინალი და შემცვლელი ნაწილები",  font=f_footer, fill=CYAN)
 
     buf = io.BytesIO()
@@ -172,9 +198,10 @@ async def generate_and_send(app):
     post_type = get_post_type()
     try:
         await app.bot.send_message(TELEGRAM_CHAT_ID, "🔄 პოსტს ვქმნი, მოიცა...")
-        text  = generate_text(post_type)
-        image = create_poster(post_type, text)
-        pending = {'type': post_type, 'text': text, 'image': image}
+        text     = generate_text(post_type)
+        ai_image = generate_ai_image(post_type)
+        image    = create_poster(post_type, text, ai_image)
+        pending  = {'type': post_type, 'text': text, 'image': image}
         await send_for_approval(app, post_type, text, image)
     except Exception as e:
         logger.error(e)
@@ -202,7 +229,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "👋 Wish Motors Bot გამართულია!\n\n"
-        "📅 პოსტი ავტომატურად გაიგზავნება სამშაბათს და პარასკევს 10:00-ზე.\n"
+        "📅 პოსტი ავტომატურად გაიგზავნება ორშაბათს და ხუთშაბათს 10:00-ზე.\n"
         "⚡ ახლა სატესტოდ: /generate"
     )
 
@@ -221,7 +248,7 @@ def main():
     scheduler.start()
 
     logger.info("Bot started!")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
 if __name__ == "__main__":
     main()
