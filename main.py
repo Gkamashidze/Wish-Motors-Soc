@@ -97,8 +97,6 @@ def generate_text(post_type):
     text = re.sub(r'\*+', '', response.text)
     text = re.sub(r'#+\s?', '', text)
     return text.strip()
-3. generate_ai_image ფუნქცია — მთლიანად შეცვალე:
-
 
 def generate_ai_image(post_type):
     client = google_genai.Client(api_key=GEMINI_API_KEY)
@@ -131,27 +129,6 @@ def generate_ai_image(post_type):
         logger.warning(f"AI სურათი ვერ შეიქმნა: {e}")
         return None
         
-def generate_ai_image(post_type):
-    client = google_genai.Client(api_key=GEMINI_API_KEY)
-    if post_type == "maintenance":
-        prompt = """Professional automotive advertisement photo. SsangYong car parts and maintenance tools arranged professionally. Dark navy blue and cyan color scheme. Clean, modern look. No text."""
-    else:
-        prompt = """Professional automotive electrical diagnostics photo. Modern car diagnostic equipment, ECU components. Dark navy blue and cyan color scheme. Clean, technical look. No text."""
-    try:
-        response = client.models.generate_images(
-            model='imagen-4',
-            prompt=prompt,
-            config=genai_types.GenerateImagesConfig(
-                number_of_images=1,
-                aspect_ratio='1:1',
-                output_mime_type='image/jpeg'
-            )
-        )
-        return response.generated_images[0].image.image_bytes
-    except Exception as e:
-        logger.warning(f"AI სურათი ვერ შეიქმნა: {e}")
-        return None
-
 def create_poster(post_type, text, ai_image_bytes=None):
     W, H = 1080, 1080
     if ai_image_bytes:
