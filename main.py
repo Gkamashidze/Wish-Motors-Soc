@@ -37,11 +37,20 @@ TELEGRAM_CHAT_ID     = os.environ["TELEGRAM_CHAT_ID"]
 FB_PAGE_ACCESS_TOKEN = os.environ["FB_PAGE_ACCESS_TOKEN"]
 FB_PAGE_ID           = os.environ["FB_PAGE_ID"]
 FB_GROUP_ID          = os.environ.get("FB_GROUP_ID", "")
+ALLOWED_USER_ID      = int(os.environ["TELEGRAM_CHAT_ID"])
 
 NAVY  = (27,  45,  91)
 CYAN  = (41, 171, 226)
 WHITE = (255, 255, 255)
 STATE_FILE = "state.json"
+
+def owner_only(func):
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        if update.effective_user.id != ALLOWED_USER_ID:
+            await update.message.reply_text("⛔ წვდომა აკრძალულია")
+            return
+        return await func(update, context)
+    return wrapper
 
 def get_post_type():
     try:
@@ -196,7 +205,7 @@ async def send_for_approval(app, post_type, text, image):
 
 def post_to_facebook(text, image):
     r = requests.post(
-        f"https://graph.facebook.com/v19.0/{FB_PAGE_ID}/photos",
+        f"https://graph.facebook.com/v21.0/{FB_PAGE_ID}/photos",
         files={'source': ('poster.png', io.BytesIO(image), 'image/png')},
         data={'caption': text, 'access_token': FB_PAGE_ACCESS_TOKEN}
     ).json()
@@ -204,7 +213,7 @@ def post_to_facebook(text, image):
         raise Exception(r['error']['message'])
     if FB_GROUP_ID:
         requests.post(
-            f"https://graph.facebook.com/v19.0/{FB_GROUP_ID}/photos",
+            f"https://graph.facebook.com/v21.0/{FB_GROUP_ID}/photos",
             files={'source': ('poster.png', io.BytesIO(image), 'image/png')},
             data={'caption': text, 'access_token': FB_PAGE_ACCESS_TOKEN}
         )
@@ -224,6 +233,8 @@ async def generate_and_send(app):
         await app.bot.send_message(TELEGRAM_CHAT_ID, f"❌ შეცდომა: {e}")
 
 async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ALLOWED_USER_ID:
+        return
     global pending
     q = update.callback_query
     await q.answer()
@@ -242,6 +253,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await q.edit_message_caption("🔄 ახლიდან ვქმნი...")
         await generate_and_send(context.application)
 
+@owner_only
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "👋 Wish Motors Bot გამართულია!\n\n"
@@ -249,9 +261,9 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "⚡ ახლა სატესტოდ: /generate"
     )
 
+@owner_only
 async def cmd_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await generate_and_send(context.application)
-
+    
 def main():
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
