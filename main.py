@@ -11,6 +11,23 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import re
 
+FONT_BOLD = "/tmp/geo_bold.ttf"
+FONT_REG  = "/tmp/geo_reg.ttf"
+
+def ensure_fonts():
+    if not os.path.exists(FONT_BOLD):
+        try:
+            r = requests.get("https://github.com/google/fonts/raw/main/ofl/notosansgeorgian/static/NotoSansGeorgian-Bold.ttf", timeout=15)
+            with open(FONT_BOLD, 'wb') as f: f.write(r.content)
+        except Exception as e:
+            logger.warning(f"Bold font download failed: {e}")
+    if not os.path.exists(FONT_REG):
+        try:
+            r = requests.get("https://github.com/google/fonts/raw/main/ofl/notosansgeorgian/static/NotoSansGeorgian-Regular.ttf", timeout=15)
+            with open(FONT_REG, 'wb') as f: f.write(r.content)
+        except Exception as e:
+            logger.warning(f"Regular font download failed: {e}")
+
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -39,13 +56,14 @@ def save_post_type(t):
         json.dump({"last_type": t}, f)
 
 def load_font(size, bold=False):
-    paths = [
-        f"/usr/share/fonts/truetype/noto/NotoSansGeorgian-{'Bold' if bold else 'Regular'}.ttf",
-        f"/usr/share/fonts/noto/NotoSansGeorgian-{'Bold' if bold else 'Regular'}.ttf",
+    ensure_fonts()
+    preferred = FONT_BOLD if bold else FONT_REG
+    fallbacks = [
+        preferred,
+        "/usr/share/fonts/truetype/noto/NotoSansGeorgian-Bold.ttf" if bold else "/usr/share/fonts/truetype/noto/NotoSansGeorgian-Regular.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
     ]
-    for p in paths:
+    for p in fallbacks:
         try:
             return ImageFont.truetype(p, size)
         except Exception:
@@ -140,38 +158,41 @@ def create_poster(post_type, text, ai_image_bytes=None):
     else:
         img = Image.new('RGBA', (W, H), NAVY + (255,))
 
-    # Header bar
-    header = Image.new('RGBA', (W, 140), NAVY + (235,))
+    # Header
+    header = Image.new('RGBA', (W, 150), NAVY + (240,))
     img.paste(header, (0, 0), header)
 
-    # Footer bar
-    footer = Image.new('RGBA', (W, 120), NAVY + (235,))
-    img.paste(footer, (0, H - 120), footer)
+    # Footer
+    footer = Image.new('RGBA', (W, 130), NAVY + (240,))
+    img.paste(footer, (0, H - 130), footer)
 
     img = img.convert('RGB')
     draw = ImageDraw.Draw(img)
 
     # Cyan accent lines
-    draw.rectangle([0, 140, W, 156], fill=CYAN)
-    draw.rectangle([0, H - 136, W, H - 120], fill=CYAN)
+    draw.rectangle([0, 150, W, 167], fill=CYAN)
+    draw.rectangle([0, H - 147, W, H - 130], fill=CYAN)
 
-    f_title  = load_font(54, bold=True)
-    f_badge  = load_font(28, bold=True)
-    f_footer = load_font(25)
+    f_title   = load_font(58, bold=True)
+    f_subtitle= load_font(26)
+    f_badge   = load_font(30, bold=True)
+    f_footer  = load_font(27)
+    f_footer2 = load_font(24)
 
-    # Header
-    draw.text((40, 30), "WISH MOTORS", font=f_title, fill=WHITE)
+    # Header: WISH MOTORS
+    draw.text((40, 25), "WISH MOTORS", font=f_title, fill=WHITE)
+    draw.text((42, 105), "SsangYong Parts & Accessories", font=f_subtitle, fill=CYAN)
 
-    # Badge
+    # Badge (post type)
     badge = "🔧 SsangYong-ის მოვლა" if post_type == "maintenance" else "⚡ ელექტრო დიაგნოსტიკა"
-    bx, by = 40, 168
+    bx, by = 40, 178
     bb = draw.textbbox((bx, by), badge, font=f_badge)
-    draw.rectangle([bx - 10, by - 8, bb[2] + 10, bb[3] + 8], fill=CYAN)
+    draw.rectangle([bx - 12, by - 10, bb[2] + 12, bb[3] + 10], fill=CYAN)
     draw.text((bx, by), badge, font=f_badge, fill=WHITE)
 
     # Footer
-    draw.text((40, H - 105), "📞 Wish Motors | SsangYong Parts", font=f_footer, fill=WHITE)
-    draw.text((40, H - 68),  "ორიგინალი და შემცვლელი ნაწილები",  font=f_footer, fill=CYAN)
+    draw.text((40, H - 118), "📞 Wish Motors | SsangYong Parts", font=f_footer,  fill=WHITE)
+    draw.text((40, H - 78),  "ორიგინალი და შემცვლელი ნაწილები",  font=f_footer2, fill=CYAN)
 
     buf = io.BytesIO()
     img.save(buf, format='PNG')
