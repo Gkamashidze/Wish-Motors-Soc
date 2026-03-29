@@ -211,7 +211,7 @@ def main():
 
     scheduler = AsyncIOScheduler(timezone="Asia/Tbilisi")
     scheduler.add_job(generate_and_send, 'cron',
-                      day_of_week='tue,fri', hour=10, minute=0, args=[app])
+                      day_of_week='mon,thu', hour=10, minute=0, args=[app])
     scheduler.start()
 
     logger.info("Bot started!")
