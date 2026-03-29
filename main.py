@@ -88,7 +88,7 @@ def generate_text(post_type):
 - იყოს მეგობრული და პროფესიონალური
 - არ შეიცავდეს ჰეშთეგებს"""
     response = client.models.generate_content(
-        model='gemini-2.0-flash-lite',
+        model='gemini-2.5-flash',
         contents=prompt
     )
     return response.text.strip()
@@ -101,7 +101,7 @@ def generate_ai_image(post_type):
         prompt = """Professional automotive electrical diagnostics photo. Modern car diagnostic equipment, ECU components. Dark navy blue and cyan color scheme. Clean, technical look. No text."""
     try:
         response = client.models.generate_images(
-            model='imagen-3.0-generate-002',
+            model='imagen-4',
             prompt=prompt,
             config=genai_types.GenerateImagesConfig(
                 number_of_images=1,
