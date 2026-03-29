@@ -3,33 +3,17 @@ import io
 import json
 import logging
 import requests
+import re
+from functools import wraps
 from google import genai as google_genai
 from google.genai import types as genai_types
 from PIL import Image, ImageDraw, ImageFont
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-import re
-from functools import wraps
 
 FONT_BOLD = "/tmp/geo_bold.ttf"
 FONT_REG  = "/tmp/geo_reg.ttf"
-
-def ensure_fonts():
-    if not os.path.exists(FONT_BOLD):
-        try:
-            r = requests.get("https://github.com/google/fonts/raw/main/ofl/notosansgeorgian/static/NotoSansGeorgian-Bold.ttf", timeout=15)
-            r.raise_for_status()
-            with open(FONT_BOLD, 'wb') as f: f.write(r.content)
-        except Exception as e:
-            logger.warning(f"Bold font download failed: {e}")
-    if not os.path.exists(FONT_REG):
-        try:
-            r = requests.get("https://github.com/google/fonts/raw/main/ofl/notosansgeorgian/static/NotoSansGeorgian-Regular.ttf", timeout=15)
-            r.raise_for_status()
-            with open(FONT_REG, 'wb') as f: f.write(r.content)
-        except Exception as e:
-            logger.warning(f"Regular font download failed: {e}")
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -46,6 +30,22 @@ NAVY  = (27,  45,  91)
 CYAN  = (41, 171, 226)
 WHITE = (255, 255, 255)
 STATE_FILE = "state.json"
+
+def ensure_fonts():
+    if not os.path.exists(FONT_BOLD):
+        try:
+            r = requests.get("https://github.com/google/fonts/raw/main/ofl/notosansgeorgian/static/NotoSansGeorgian-Bold.ttf", timeout=15)
+            r.raise_for_status()
+            with open(FONT_BOLD, 'wb') as f: f.write(r.content)
+        except Exception as e:
+            logger.warning(f"Bold font download failed: {e}")
+    if not os.path.exists(FONT_REG):
+        try:
+            r = requests.get("https://github.com/google/fonts/raw/main/ofl/notosansgeorgian/static/NotoSansGeorgian-Regular.ttf", timeout=15)
+            r.raise_for_status()
+            with open(FONT_REG, 'wb') as f: f.write(r.content)
+        except Exception as e:
+            logger.warning(f"Regular font download failed: {e}")
 
 def owner_only(func):
     @wraps(func)
@@ -166,7 +166,7 @@ No dark overlays. Professional commercial advertisement look."""
     except Exception as e:
         logger.warning(f"AI სურათი ვერ შეიქმნა: {e}")
         return None
-        
+
 def create_poster(post_type, text, ai_image_bytes=None):
     W, H = 1080, 1080
     if ai_image_bytes:
@@ -177,7 +177,6 @@ def create_poster(post_type, text, ai_image_bytes=None):
             return buf.getvalue()
         except Exception:
             pass
-    # Fallback
     img = Image.new('RGB', (W, H), NAVY)
     draw = ImageDraw.Draw(img)
     draw.rectangle([0, 0, W, 10], fill=CYAN)
@@ -187,7 +186,7 @@ def create_poster(post_type, text, ai_image_bytes=None):
     buf = io.BytesIO()
     img.save(buf, format='PNG')
     return buf.getvalue()
-    
+
 pending = {}
 
 async def send_for_approval(app, post_type, text, image):
@@ -268,7 +267,8 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 @owner_only
 async def cmd_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    
+    await generate_and_send(context.application)
+
 def main():
     ensure_fonts()
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
